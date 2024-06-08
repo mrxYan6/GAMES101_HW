@@ -9,6 +9,8 @@
 #include "global.hpp"
 #include "Triangle.hpp"
 using namespace Eigen;
+#include <array>
+
 
 namespace rst
 {
@@ -67,6 +69,7 @@ namespace rst
         void set_projection(const Eigen::Matrix4f& p);
 
         void set_pixel(const Eigen::Vector3f& point, const Eigen::Vector3f& color);
+        void set_sample(const Eigen::Vector3f& point, const Eigen::Vector3f& color);
 
         void clear(Buffers buff);
 
@@ -93,8 +96,8 @@ namespace rst
         std::vector<Eigen::Vector3f> frame_buf;
         std::vector<float> depth_buf;
 
-        std::vector<Eigen::Vector3f> frame_buf_2xMSAA;
-        std::vector<float> depth_buf_2xMSAA;
+        std::vector<std::array<Eigen::Vector3f, 4>> frame_buf_2xMSAA;
+        std::vector<std::array<float, 4>> depth_buf_2xMSAA;
 
         int get_index(int x, int y);
 
