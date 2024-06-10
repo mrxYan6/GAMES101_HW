@@ -135,7 +135,7 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-        auto La = ks.cwiseProduct(amb_light_intensity);
+        auto La = ka.cwiseProduct(amb_light_intensity);
 
         auto light_dir = (light.position - point).normalized();
 
@@ -150,7 +150,7 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
         auto cos = std::max(0.0f, half.dot(normal.normalized()));
         auto Ls = ks.cwiseProduct(I) * std::pow(cos, p);
 
-        color += (La + Ld + Ls);
+        result_color += (La + Ld + Ls);
     }
 
     return result_color * 255.f;
@@ -179,7 +179,23 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
     for (auto& light : lights)
     {
         
-        auto La = ks.cwiseProduct(amb_light_intensity);
+        //  Eigen::Vector3f light_dir = (light.position - point).normalized();
+        // Eigen::Vector3f view_dir = (eye_pos - point).normalized();
+        // Eigen::Vector3f half_dir = (light_dir + view_dir).normalized();
+
+        // Eigen::Vector3f La = ka.cwiseProduct(amb_light_intensity);
+
+        // float r2 = (light.position - point).dot(light.position - point);
+        // Eigen::Vector3f I_r2 = light.intensity / r2;
+
+        // Eigen::Vector3f Ld = kd.cwiseProduct(I_r2);
+        // Ld *= std::max(0.0f, normal.normalized().dot(light_dir));
+
+        // Eigen::Vector3f Ls = ks.cwiseProduct(I_r2);
+        // Ls *= std::pow(std::max(0.0f, normal.normalized().dot(half_dir)), p);
+
+        // result_color += (La + Ld + Ls);
+        auto La = ka.cwiseProduct(amb_light_intensity);
 
         auto light_dir = (light.position - point).normalized();
 
@@ -189,14 +205,14 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
         auto Ld = kd.cwiseProduct(I) * std::max(0.0f, light_dir.dot(normal.normalized()));
 
         auto view_dir = (eye_pos - point).normalized();
-        auto half = (light_dir + view_dir) / 2;
+        auto half = (light_dir + view_dir).normalized();
 
         auto cos = std::max(0.0f, half.dot(normal.normalized()));
         auto Ls = ks.cwiseProduct(I) * std::pow(cos, p);
 
-        color += (La + Ld + Ls);
+        result_color += (La + Ld + Ls);
     }
-
+    // std::cerr << result_color << '\n';
     return result_color * 255.f;
 }
 
@@ -240,9 +256,10 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
 
     auto t = Eigen::Vector3f(x * y / std::sqrt(x * x + z * z), std::sqrt(x * x + z * z), z * y / std::sqrt(x * x + z * z));
     auto b = n.cross(t);
-    Eigen::Matrix3f TBN = (t, b, n);
-    std::cout << t << b << n << "\n";
-    std::cout << TBN << "\n";
+    Eigen::Matrix3f TBN;
+    TBN << t[0], b[0], n[0],
+           t[1], b[1], n[1],
+           t[2], b[2], n[2];
 
 
     auto u = payload.tex_coords[0], v = payload.tex_coords[1];
@@ -265,7 +282,7 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-        auto La = ks.cwiseProduct(amb_light_intensity);
+        auto La = ka.cwiseProduct(amb_light_intensity);
 
         auto light_dir = (light.position - point).normalized();
 
@@ -280,7 +297,7 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
         auto cos = std::max(0.0f, half.dot(normal.normalized()));
         auto Ls = ks.cwiseProduct(I) * std::pow(cos, p);
 
-        color += (La + Ld + Ls);
+        result_color += (La + Ld + Ls);
     }
 
     return result_color * 255.f;
@@ -325,10 +342,10 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
 
     auto t = Eigen::Vector3f(x * y / std::sqrt(x * x + z * z), std::sqrt(x * x + z * z), z * y / std::sqrt(x * x + z * z));
     auto b = n.cross(t);
-    Eigen::Matrix3f TBN = (t, b, n);
-    std::cout << t << b << n << "\n";
-    std::cout << TBN << "\n";
-
+    Eigen::Matrix3f TBN;
+    TBN << t[0], b[0], n[0],
+           t[1], b[1], n[1],
+           t[2], b[2], n[2];
 
     auto u = payload.tex_coords[0], v = payload.tex_coords[1];
     auto W = payload.texture->width, H = payload.texture->height;
