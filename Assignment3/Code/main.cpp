@@ -178,23 +178,6 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
     Eigen::Vector3f result_color = {0, 0, 0};
     for (auto& light : lights)
     {
-        
-        //  Eigen::Vector3f light_dir = (light.position - point).normalized();
-        // Eigen::Vector3f view_dir = (eye_pos - point).normalized();
-        // Eigen::Vector3f half_dir = (light_dir + view_dir).normalized();
-
-        // Eigen::Vector3f La = ka.cwiseProduct(amb_light_intensity);
-
-        // float r2 = (light.position - point).dot(light.position - point);
-        // Eigen::Vector3f I_r2 = light.intensity / r2;
-
-        // Eigen::Vector3f Ld = kd.cwiseProduct(I_r2);
-        // Ld *= std::max(0.0f, normal.normalized().dot(light_dir));
-
-        // Eigen::Vector3f Ls = ks.cwiseProduct(I_r2);
-        // Ls *= std::pow(std::max(0.0f, normal.normalized().dot(half_dir)), p);
-
-        // result_color += (La + Ld + Ls);
         auto La = ka.cwiseProduct(amb_light_intensity);
 
         auto light_dir = (light.position - point).normalized();
@@ -250,31 +233,32 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     // Vector ln = (-dU, -dV, 1)
     // Position p = p + kn * n * h(u,v)
     // Normal n = normalize(TBN * ln)
-    auto n = normal;
+    {
+        auto n = normal;
 
-    auto x = normal[0], y = normal[1], z = normal[2];
+        auto x = normal[0], y = normal[1], z = normal[2];
 
-    auto t = Eigen::Vector3f(x * y / std::sqrt(x * x + z * z), std::sqrt(x * x + z * z), z * y / std::sqrt(x * x + z * z));
-    auto b = n.cross(t);
-    Eigen::Matrix3f TBN;
-    TBN << t[0], b[0], n[0],
-           t[1], b[1], n[1],
-           t[2], b[2], n[2];
+        auto t = Eigen::Vector3f(x * y / std::sqrt(x * x + z * z), std::sqrt(x * x + z * z), z * y / std::sqrt(x * x + z * z));
+        auto b = n.cross(t);
+        Eigen::Matrix3f TBN;
+        TBN << t[0], b[0], n[0],
+            t[1], b[1], n[1],
+            t[2], b[2], n[2];
 
+        auto u = payload.tex_coords[0], v = payload.tex_coords[1];
+        auto W = payload.texture->width, H = payload.texture->height;
 
-    auto u = payload.tex_coords[0], v = payload.tex_coords[1];
-    auto W = payload.texture->width, H = payload.texture->height;
+        auto h = [&](auto u, auto v) {
+            return payload.texture->getColor(u, v);
+        };
 
-    auto h = [&](auto u, auto v) {
-        return payload.texture->getColor(u, v);
-    };
+        auto du = kh * kn * (h(u + (1.0 / W), v).norm() - h(u, v).norm());
+        auto dv = kh * kn * (h(u, v + (1.0 / H)).norm() - h(u, v).norm());
 
-    auto du = kh * kn * (h(u + (1.0 / W), v).norm() - h(u, v).norm());
-    auto dv = kh * kn * (h(u, v + (1.0 / H)).norm() - h(u, v).norm());
-
-    auto ln = Eigen::Vector3f(-du, -dv, 1);
-    
-    normal = (TBN * ln).normalized();
+        auto ln = Eigen::Vector3f(-du, -dv, 1);
+        point += (kn * normal * h(u, v).norm());//useful!!
+        normal = (TBN * ln).normalized();
+    }
 
     Eigen::Vector3f result_color = {0, 0, 0};
 
@@ -292,7 +276,7 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
         auto Ld = kd.cwiseProduct(I) * std::max(0.0f, light_dir.dot(normal.normalized()));
 
         auto view_dir = (eye_pos - point).normalized();
-        auto half = (light_dir + view_dir) / 2;
+        auto half = (light_dir + view_dir).normalized();
 
         auto cos = std::max(0.0f, half.dot(normal.normalized()));
         auto Ls = ks.cwiseProduct(I) * std::pow(cos, p);
