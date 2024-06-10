@@ -234,7 +234,30 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     // Vector ln = (-dU, -dV, 1)
     // Position p = p + kn * n * h(u,v)
     // Normal n = normalize(TBN * ln)
+    auto n = normal;
 
+    auto x = normal[0], y = normal[1], z = normal[2];
+
+    auto t = Eigen::Vector3f(x * y / std::sqrt(x * x + z * z), std::sqrt(x * x + z * z), z * y / std::sqrt(x * x + z * z));
+    auto b = n.cross(t);
+    Eigen::Matrix3f TBN = (t, b, n);
+    std::cout << t << b << n << "\n";
+    std::cout << TBN << "\n";
+
+
+    auto u = payload.tex_coords[0], v = payload.tex_coords[1];
+    auto W = payload.texture->width, H = payload.texture->height;
+
+    auto h = [&](auto u, auto v) {
+        return payload.texture->getColor(u, v);
+    };
+
+    auto du = kh * kn * (h(u + (1.0 / W), v).norm() - h(u, v).norm());
+    auto dv = kh * kn * (h(u, v + (1.0 / H)).norm() - h(u, v).norm());
+
+    auto ln = Eigen::Vector3f(-du, -dv, 1);
+    
+    normal = (TBN * ln).normalized();
 
     Eigen::Vector3f result_color = {0, 0, 0};
 
@@ -242,8 +265,22 @@ Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payl
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
+        auto La = ks.cwiseProduct(amb_light_intensity);
 
+        auto light_dir = (light.position - point).normalized();
 
+        auto R2 = (point - light.position).dot(point - light.position);
+        auto I = light.intensity / R2;
+
+        auto Ld = kd.cwiseProduct(I) * std::max(0.0f, light_dir.dot(normal.normalized()));
+
+        auto view_dir = (eye_pos - point).normalized();
+        auto half = (light_dir + view_dir) / 2;
+
+        auto cos = std::max(0.0f, half.dot(normal.normalized()));
+        auto Ls = ks.cwiseProduct(I) * std::pow(cos, p);
+
+        color += (La + Ld + Ls);
     }
 
     return result_color * 255.f;
