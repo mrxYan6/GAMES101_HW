@@ -115,17 +115,15 @@ Intersection BVHAccel::getIntersection(BVHBuildNode* node, const Ray& ray) const
     for (int i = 0; i < 3; ++i) {
         dirIsNeg[i] = ray.direction[i] < 0;
     }
-    if (!node->bounds.IntersectP(ray, ray.direction_inv, dirIsNeg)) {
-        return inter;
-    }
-
-    if (node->left == nullptr && node->right == nullptr) {
+    if(node->object != nullptr){
         return node->object->getIntersection(ray);
     }
 
-    auto hitLeft = getIntersection(node->left, ray);
-    auto hitRight = getIntersection(node->right, ray);
-    return hitLeft.distance < hitRight.distance ? hitLeft : hitRight;
+    Intersection isect_left, isect_right;
+    isect_left = getIntersection(node->left, ray);
+    isect_right = getIntersection(node->right, ray);
+
+    return isect_left.distance <= isect_right.distance ? isect_left : isect_right;
 }
 
 void BVHAccel::getSample(BVHBuildNode* node, float p, Intersection &pos, float &pdf){
