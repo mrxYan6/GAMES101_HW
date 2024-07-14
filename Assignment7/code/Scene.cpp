@@ -79,7 +79,7 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 
         Ray light_ray(p, ws);
         Intersection light_intersection = intersect(light_ray);
-        if (light_intersection.distance - (x - p).norm() > -EPSILON) {
+        if (light_intersection.distance - (x - p).norm() > -0.01) {
             Vector3f f_r = intersection.m->eval(wo, ws, intersection.normal);
             float dist2 = dotProduct(x - p, x - p);
             light_direct = light_pos.emit * f_r * dotProduct(ws, intersection.normal) * dotProduct(-ws, light_pos.normal) / dist2 / pdf_light;
@@ -103,5 +103,4 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
     } else {
         return Vector3f(0, 0, 0);
     }
-
 }
